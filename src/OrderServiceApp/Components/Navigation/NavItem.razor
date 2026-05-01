@@ -1,0 +1,14 @@
+﻿@using OrderServiceApp.Models
+
+<NavLink href="@Item.Link" class="nav-link" Match="@(Item.Link == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+    @if (!string.IsNullOrEmpty(Item.Icon))
+    {
+        <i class="@Item.Icon nav-icon"></i>
+    }
+    <span class="nav-label">@Item.Label</span>
+</NavLink>
+
+@code {
+    [Parameter, EditorRequired]
+    public NavItemConfig Item { get; set; } = default!;
+}

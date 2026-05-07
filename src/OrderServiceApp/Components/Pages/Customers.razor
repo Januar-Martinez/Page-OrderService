@@ -1,0 +1,162 @@
+﻿@page "/customers"
+@rendermode InteractiveServer
+@using OrderServiceApp.Models
+@using OrderServiceApp.Services
+@using OrderServiceApp.Components.Table
+@using OrderServiceApp.Components.Modal
+@inject CustomerService CustomerService
+
+<div class="emp-page">
+
+    <div class="emp-add-row">
+        <button class="gm-btn gm-btn--save" @onclick="OpenCreate">
+            <span class="material-icons">add_circle</span> Añadir
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_alertMessage))
+    {
+        <div class="emp-alert emp-alert--@_alertType">
+            @_alertMessage
+            <button class="emp-alert-close" @onclick="() => _alertMessage = null">✕</button>
+        </div>
+    }
+
+    <div class="emp-table-wrapper">
+        <GenericTable TItem="Customer"
+                      Data="@_customers"
+                      Columns="@_columns"
+                      InitialPageSize="5" />
+    </div>
+
+</div>
+
+<GenericModal Title="@_modalTitle"
+              Operation="@_operation"
+              Fields="@_fields"
+              IsOpen="@_isOpen"
+              InitialValues="@_initialValues"
+              OnClose="CloseModal"
+              OnSave="HandleSave" />
+
+
+@code {
+    private List<Customer> _customers = new();
+
+    private string? _alertMessage;
+    private string _alertType = "success";
+
+    private bool _isOpen = false;
+    private string _modalTitle = "";
+    private int _operation = 1;
+    private Dictionary<string, string> _initialValues = new();
+
+    private List<TableColumnConfig<Customer>> _columns = new();
+
+    private readonly List<ModalFieldConfig> _fields = new()
+    {
+        new() { Id = "name",  Label = "Nombre", Icon = "person", Type = FieldType.Text, ToUpperCase = true },
+        new() { Id = "email", Label = "Email",  Icon = "email",  Type = FieldType.Text },
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            _customers = await CustomerService.GetAllAsync();
+        }
+        catch
+        {
+            ShowAlert("Error al cargar clientes", "error");
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new List<TableColumnConfig<Customer>>
+        {
+            new() { Label = "ID",     Accessor = "Id",    Type = ColumnType.Text },
+            new() { Label = "Nombre", Accessor = "Name",  Type = ColumnType.Text },
+            new() { Label = "Email",  Accessor = "Email", Type = ColumnType.Text },
+        };
+    }
+
+    private void OpenCreate()
+    {
+        _modalTitle = "Registrar Cliente";
+        _operation = 1;
+        _initialValues = new();
+        _isOpen = true;
+    }
+
+    private void CloseModal() => _isOpen = false;
+
+    private async Task HandleSave(Dictionary<string, string> values)
+    {
+        var name  = values.GetValueOrDefault("name", "").Trim();
+        var email = values.GetValueOrDefault("email", "").Trim();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            ShowAlert("Escribe el nombre del cliente", "warning");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(email))
+        {
+            ShowAlert("Escribe el email del cliente", "warning");
+            return;
+        }
+
+        ApiResponse<Customer> response;
+
+        if (_operation == 1)
+        {
+            response = await CustomerService.CreateAsync(new Customer
+                {
+                    Name = name,
+                    Email = email
+                });
+        }
+        else
+        {
+            response = new ApiResponse<Customer>
+                {
+                    Success = false,
+                    Message = "Operación no válida"
+                };
+        }
+
+        if (response.Success)
+        {
+            ShowAlert(response.Message, "success");
+            CloseModal();
+            await LoadEmployees();
+        }
+        else
+        {
+            var type = response.StatusCode switch
+            {
+                400 => "warning",
+                404 => "warning",
+                409 => "warning",
+                500 => "error",
+                _ => "error"
+            };
+
+            ShowAlert(response.Message, type);
+        }
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        _alertMessage = message;
+        _alertType    = type;
+    }
+}

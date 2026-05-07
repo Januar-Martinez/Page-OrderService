@@ -1,0 +1,158 @@
+﻿.gt-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 495px;
+    font-family: sans-serif;
+}
+
+.gt-scroll {
+    flex-grow: 1;
+    overflow: auto;
+}
+
+.gt-table {
+    border-spacing: 0;
+    width: 100%;
+    margin-bottom: 1rem;
+    color: #222;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+.gt-th {
+    background-color: #00ADB5;
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    cursor: pointer;
+    border: 1px solid #009aa1;
+    vertical-align: middle;
+}
+
+.gt-th-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gt-th-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gt-sort-icon {
+    font-size: 0.75rem;
+}
+
+.gt-sum-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0 2px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.gt-sum-btn:hover {
+    opacity: 0.75;
+}
+
+.gt-filter-input,
+.gt-filter-select {
+    background-color: #00ADB5;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    width: 100%;
+    outline: none;
+}
+
+.gt-filter-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.gt-filter-input:focus,
+.gt-filter-select:focus {
+    border-color: #fff;
+    box-shadow: none;
+}
+
+.gt-row:hover {
+    background-color: #f0fafa;
+}
+
+.gt-td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+}
+
+.gt-td:nth-child(odd),
+.gt-tfoot-td:nth-child(odd) {
+    background-color: #fbfbfb;
+}
+
+.gt-tfoot-td {
+    text-align: center;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    font-weight: 600;
+    background-color: #f5f5f5;
+}
+
+.gt-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 3px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.gt-page-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.gt-btn {
+    background-color: white;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
+}
+
+.gt-btn:hover:not(:disabled) {
+    background-color: #e8e8e8;
+}
+
+.gt-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.gt-page-info {
+    font-size: 0.85rem;
+    margin-left: 6px;
+}
+
+.gt-page-select {
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+}

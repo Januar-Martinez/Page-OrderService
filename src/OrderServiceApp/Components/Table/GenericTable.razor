@@ -1,0 +1,287 @@
+﻿@typeparam TItem
+@using OrderServiceApp.Models
+
+<div class="gt-wrapper">
+    <div class="gt-scroll">
+        <table class="gt-table">
+            <thead>
+                <tr>
+                    @foreach (var col in Columns)
+                    {
+                        <th class="gt-th" @onclick="() => ToggleSort(col)">
+                            <div class="gt-th-inner">
+                                <div class="gt-th-label">
+                                    @if (col.Type == ColumnType.Monetary)
+                                    {
+                                        <span>@col.Label</span>
+                                        <button class="gt-sum-btn"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => ToggleSum(col.Accessor)">
+                                            <span class="material-icons">functions</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span>@col.Label</span>
+                                    }
+
+                                    @if (col.Type != ColumnType.Actions)
+                                    {
+                                        <span>@GetSortIcon(col.Accessor)</span>
+                                    }
+                                </div>
+
+                                @if (col.Type == ColumnType.Text || col.Type == ColumnType.Monetary)
+                                {
+                                    <input class="gt-filter-input"
+                                           placeholder="Buscar..."
+                                           value="@GetFilter(col.Accessor)"
+                                           @onclick:stopPropagation="true"
+                                           @oninput:stopPropagation="true"
+                                           @oninput="@(e => SetFilter(col.Accessor, e.Value?.ToString() ?? ""))" />
+                                }
+                                else if (col.Type == ColumnType.Boolean)
+                                {
+                                    <select class="gt-filter-select"
+                                            value="@GetFilter(col.Accessor)"
+                                            @onclick:stopPropagation="true"
+                                            @onchange:stopPropagation="true"
+                                            @onchange="@(e => SetFilter(col.Accessor, e.Value?.ToString() ?? ""))">
+                                        <option value="">Todos</option>
+                                        <option value="true">Sí</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                }
+                            </div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _pagedData)
+                {
+                    <tr class="gt-row">
+                        @foreach (var col in Columns)
+                        {
+                            <td class="gt-td">
+                                @RenderCell(col, row)
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    @foreach (var col in Columns)
+                    {
+                        <td class="gt-tfoot-td">
+                            @if (col.Type == ColumnType.Monetary && _sumVisible.Contains(col.Accessor))
+                            {
+                                var total = _filteredData.Sum(r => GetDecimalValue(r, col.Accessor));
+                                <span>@FormatCOP(total)</span>
+                            }
+                        </td>
+                    }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="gt-pagination">
+        <div class="gt-page-buttons">
+            <button class="gt-btn" disabled="@(_pageIndex == 0)" @onclick="() => GoTo(0)">«</button>
+            <button class="gt-btn" disabled="@(_pageIndex == 0)" @onclick="Prev">‹</button>
+            <button class="gt-btn" disabled="@(_pageIndex >= _pageCount - 1)" @onclick="Next">›</button>
+            <button class="gt-btn" disabled="@(_pageIndex >= _pageCount - 1)" @onclick="() => GoTo(_pageCount - 1)">»</button>
+            <span class="gt-page-info">
+                Página <strong>@(_pageIndex + 1) de @_pageCount</strong>
+            </span>
+        </div>
+        <div>
+            <select class="gt-page-select" @onchange="OnPageSizeChange">
+                @foreach (var s in new[] { 5, 10, 20 })
+                {
+                    <option value="@s" selected="@(_pageSize == s)">Mostrar @s</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TItem> Data { get; set; } = new();
+    [Parameter] public List<TableColumnConfig<TItem>> Columns { get; set; } = new();
+    [Parameter] public int InitialPageSize { get; set; } = 5;
+
+    private int _pageIndex = 0;
+    private int _pageSize;
+    private int _pageCount = 1;
+
+    private string? _sortColumn;
+    private bool _sortDesc;
+
+    private Dictionary<string, string> _filters = new();
+    private HashSet<string> _sumVisible = new();
+
+    private List<TItem> _filteredData = new();
+    private List<TItem> _pagedData = new();
+
+    protected override void OnInitialized()
+    {
+        _pageSize = InitialPageSize;
+        Recalculate();
+    }
+
+    protected override void OnParametersSet()
+    {
+        Recalculate();
+    }
+
+
+    private void Recalculate()
+    {
+        _filteredData = Data;
+        _filteredData = Data.Where(row =>
+        {
+            foreach (var kvp in _filters)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Value))
+                    continue;
+
+                var col = Columns.FirstOrDefault(c => c.Accessor == kvp.Key);
+
+                if (col == null)
+                    continue;
+
+                var raw = GetPropertyValue(row, kvp.Key);
+
+                if (col.Type == ColumnType.Boolean)
+                {
+                    var bVal = raw is bool b
+                        ? b.ToString().ToLower()
+                        : "false";
+
+                    if (bVal != kvp.Value.ToLower().Trim())
+                        return false;
+                }
+                else
+                {
+                    var str = raw?.ToString() ?? "";
+
+                    var filterValue = kvp.Value.Trim();
+
+                    if (!str.Contains(filterValue, StringComparison.OrdinalIgnoreCase))
+                        return false;
+                }
+            }
+
+            return true;
+        }).ToList();
+
+        if (_sortColumn != null)
+        {
+            _filteredData = _sortDesc
+                ? _filteredData.OrderByDescending(r => GetPropertyValue(r, _sortColumn)).ToList()
+                : _filteredData.OrderBy(r => GetPropertyValue(r, _sortColumn)).ToList();
+        }
+
+        _pageCount = Math.Max(1, (int)Math.Ceiling(_filteredData.Count / (double)_pageSize));
+        _pageIndex = Math.Clamp(_pageIndex, 0, _pageCount - 1);
+        _pagedData = _filteredData.Skip(_pageIndex * _pageSize).Take(_pageSize).ToList();
+    }
+
+    private void ToggleSort(TableColumnConfig<TItem> col)
+    {
+        if (col.Type == ColumnType.Actions) return;
+
+        if (_sortColumn == col.Accessor)
+            _sortDesc = !_sortDesc;
+        else
+        {
+            _sortColumn = col.Accessor;
+            _sortDesc = false;
+        }
+        Recalculate();
+        StateHasChanged();
+    }
+
+    private string GetSortIcon(string accessor)
+    {
+        if (_sortColumn != accessor) return "";
+        return _sortDesc ? " ▼" : " ▲";
+    }
+
+    private void ToggleSum(string accessor)
+    {
+        if (!_sumVisible.Add(accessor))
+            _sumVisible.Remove(accessor);
+        StateHasChanged();
+    }
+
+    private void GoTo(int page) { _pageIndex = page; Recalculate(); }
+    private void Next() { if (_pageIndex < _pageCount - 1) { _pageIndex++; Recalculate(); } }
+    private void Prev() { if (_pageIndex > 0) { _pageIndex--; Recalculate(); } }
+    private void OnPageSizeChange(ChangeEventArgs e)
+    {
+        _pageSize = int.TryParse(e.Value?.ToString(), out var s) ? s : 5;
+        _pageIndex = 0;
+        Recalculate();
+    }
+
+    private object? GetPropertyValue(TItem item, string prop) =>
+    typeof(TItem).GetProperty(
+        prop,
+        System.Reflection.BindingFlags.Public |
+        System.Reflection.BindingFlags.Instance |
+        System.Reflection.BindingFlags.IgnoreCase)
+    ?.GetValue(item);
+
+    private decimal GetDecimalValue(TItem item, string prop)
+    {
+        var v = GetPropertyValue(item, prop);
+        return v is decimal d ? d : (v is double db ? (decimal)db : 0m);
+    }
+
+    private string FormatCOP(decimal value) =>
+        value.ToString("C0", new System.Globalization.CultureInfo("es-CO"));
+
+    private RenderFragment RenderCell(TableColumnConfig<TItem> col, TItem row) => builder =>
+    {
+        var val = GetPropertyValue(row, col.Accessor);
+        switch (col.Type)
+        {
+            case ColumnType.Monetary:
+                builder.AddContent(0, FormatCOP(GetDecimalValue(row, col.Accessor)));
+                break;
+            case ColumnType.Boolean:
+                builder.AddContent(0, val is bool b && b ? "Sí" : "No");
+                break;
+            case ColumnType.Actions:
+                if (col.RenderActions != null)
+                    builder.AddContent(0, col.RenderActions(row));
+                break;
+            default:
+                builder.AddContent(0, val?.ToString() ?? "");
+                break;
+        }
+    };
+
+    private string GetFilter(string accessor)
+    {
+        return _filters.TryGetValue(accessor, out var value)
+            ? value
+            : "";
+    }
+
+    private void SetFilter(string accessor, string value)
+    {
+        _filters[accessor] = value;
+
+        _pageIndex = 0;
+
+        Recalculate();
+
+        InvokeAsync(StateHasChanged);
+    }
+
+}

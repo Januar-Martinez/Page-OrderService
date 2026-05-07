@@ -1,0 +1,117 @@
+﻿@using OrderServiceApp.Models
+
+<div class="gm-overlay @(IsOpen ? "gm-overlay--visible" : "")"
+     @onclick="HandleOverlayClick">
+    <div class="gm-dialog" @onclick:stopPropagation="true">
+
+        <div class="gm-header">
+            <span class="gm-title">@Title</span>
+            <button class="gm-close-btn" @onclick="Close" title="Cerrar">✕</button>
+        </div>
+
+        <div class="gm-body">
+            @foreach (var field in Fields)
+            {
+                if (field.ShowOnlyWhenOperation && Operation != 1)
+                    continue;
+
+                <div class="gm-field">
+                    @if (!string.IsNullOrEmpty(field.Icon))
+                    {
+                        <span class="gm-icon material-icons">@field.Icon</span>
+                    }
+
+                    @switch (field.Type)
+                    {
+                        case FieldType.Text:
+                            <input class="gm-input"
+                                   type="text"
+                                   placeholder="@field.Label"
+                                   value="@GetValue(field.Id)"
+                                   @oninput="e => HandleInput(e, field)" />
+                            break;
+
+                        case FieldType.Number:
+                            <input class="gm-input"
+                                   type="number"
+                                   placeholder="@field.Label"
+                                   value="@GetValue(field.Id)"
+                                   @oninput="e => HandleNumberInput(e, field.Id)" />
+                            break;
+
+                        case FieldType.Boolean:
+                            <select class="gm-input"
+                                    value="@GetValue(field.Id)"
+                                    @onchange="e => HandleBooleanChange(e, field.Id)">
+                                <option value="true">@field.TrueLabel</option>
+                                <option value="false">@field.FalseLabel</option>
+                            </select>
+                            break;
+                    }
+                </div>
+            }
+
+            <div class="gm-save-wrapper">
+                <button class="gm-btn gm-btn--save" @onclick="HandleSave">
+                    <span class="material-icons">save</span> Guardar
+                </button>
+            </div>
+        </div>
+
+        <div class="gm-footer">
+            <button class="gm-btn gm-btn--secondary" @onclick="Close">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int Operation { get; set; } = 1;
+    [Parameter] public List<ModalFieldConfig> Fields { get; set; } = new();
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Dictionary<string, string>> OnSave { get; set; }
+    [Parameter] public Dictionary<string, string> InitialValues { get; set; } = new();
+
+    [Parameter] public bool IsOpen { get; set; }
+
+    private Dictionary<string, string> _values = new();
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _values = new Dictionary<string, string>(InitialValues);
+        }
+    }
+
+    private string GetValue(string id) =>
+        _values.TryGetValue(id, out var v) ? v : "";
+
+    private void SetValue(string id, string value) =>
+        _values[id] = value;
+
+    private void HandleInput(ChangeEventArgs e, ModalFieldConfig field)
+    {
+        var value = e.Value?.ToString() ?? "";
+        if (field.ToUpperCase) value = value.ToUpperInvariant();
+        SetValue(field.Id, value);
+    }
+
+    private void HandleNumberInput(ChangeEventArgs e, string id) =>
+        SetValue(id, e.Value?.ToString() ?? "");
+
+    private void HandleBooleanChange(ChangeEventArgs e, string id) =>
+        SetValue(id, e.Value?.ToString() ?? "false");
+
+    private async Task HandleSave() =>
+        await OnSave.InvokeAsync(new Dictionary<string, string>(_values));
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleOverlayClick() => await Close();
+}

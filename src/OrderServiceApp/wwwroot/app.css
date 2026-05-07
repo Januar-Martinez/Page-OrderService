@@ -42,9 +42,9 @@ h1:focus {
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
@@ -59,4 +59,155 @@ html, body {
     padding: 0;
     height: 100%;
     overflow-x: hidden;
+}
+
+.gm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.gm-overlay--visible {
+    display: flex;
+}
+
+.gm-dialog {
+    background: #fff;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    animation: gm-slide-in 0.2s ease;
+}
+
+@keyframes gm-slide-in {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.gm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background-color: #00ADB5;
+    color: #fff;
+}
+
+.gm-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.gm-close-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.gm-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.gm-body {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gm-field {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.gm-icon {
+    padding: 8px 10px;
+    background-color: #f0f0f0;
+    color: #555;
+    font-size: 1.1rem;
+    border-right: 1px solid #ccc;
+    user-select: none;
+}
+
+.gm-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+    background: #fff;
+}
+
+.gm-input:focus {
+    background-color: #f7fefe;
+}
+
+.gm-save-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.gm-footer {
+    padding: 12px 18px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+}
+
+.gm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.gm-btn--save {
+    background-color: #00ADB5;
+    color: #fff;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.gm-btn--save:hover {
+    background-color: #fff;
+    color: #00ADB5;
+    outline: 2px solid #00ADB5;
+}
+
+.gm-btn--secondary {
+    background-color: #393E46;
+    color: #fff;
+}
+
+.gm-btn--secondary:hover {
+    background-color: #2b2f36;
 }

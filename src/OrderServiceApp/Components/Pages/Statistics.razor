@@ -1,0 +1,177 @@
+﻿@page "/statistics"
+@rendermode InteractiveServer
+
+@using OrderServiceApp.Models
+@using OrderServiceApp.Services
+@using OrderServiceApp.Components.Table
+
+@inject OrderService OrderService
+
+<div class="st-page">
+
+    @if (_stats == null)
+    {
+        <p>Cargando estadísticas...</p>
+    }
+    else
+    {
+        <div class="st-cards">
+
+            <div class="st-card">
+                <span class="material-icons st-card-icon">payments</span>
+
+                <div class="st-card-body">
+                    <span class="st-card-title">Ventas Totales</span>
+                    <span class="st-card-value">
+                        @FormatCOP(_stats.TotalRevenue)
+                    </span>
+                </div>
+            </div>
+
+            <div class="st-card">
+                <span class="material-icons st-card-icon">shopping_cart</span>
+
+                <div class="st-card-body">
+                    <span class="st-card-title">Productos Vendidos</span>
+                    <span class="st-card-value">
+                        @_stats.TopProducts.Sum(x => x.TotalSold)
+                    </span>
+                </div>
+            </div>
+
+            <div class="st-card">
+                <span class="material-icons st-card-icon">groups</span>
+
+                <div class="st-card-body">
+                    <span class="st-card-title">Clientes con Pedidos</span>
+                    <span class="st-card-value">
+                        @_stats.OrdersByCustomer.Count(x => x.TotalOrders > 0)
+                    </span>
+                </div>
+            </div>
+
+            <div class="st-card">
+                <span class="material-icons st-card-icon">workspace_premium</span>
+
+                <div class="st-card-body">
+                    <span class="st-card-title">Producto Top</span>
+                    <span class="st-card-value">
+                        @_stats.TopProducts.FirstOrDefault()?.Name
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="st-section">
+
+            <div class="st-panel">
+
+                <div class="st-panel-header">
+                    <span class="material-icons">leaderboard</span>
+                    <h3>Productos Más Vendidos</h3>
+                </div>
+
+                @foreach (var p in _stats.TopProducts)
+                {
+                    <div class="st-bar-row">
+
+                        <span class="st-bar-label">
+                            @p.Name
+                        </span>
+
+                        <div class="st-bar-container">
+                            <div class="st-bar"
+                                 style="width:@(p.TotalSold * 20)%">
+                            </div>
+                        </div>
+
+                        <span class="st-bar-value">
+                            @p.TotalSold
+                        </span>
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+        <div class="st-section">
+
+            <div class="st-panel">
+
+                <div class="st-panel-header">
+                    <span class="material-icons">table_view</span>
+                    <h3>Pedidos por Cliente</h3>
+                </div>
+
+                <GenericTable TItem="CustomerOrderStatistics"
+                              Data="@_customerStats"
+                              Columns="@_columns"
+                              InitialPageSize="5" />
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    private OrderStatistics? _stats;
+
+    private List<CustomerOrderStatistics> _customerStats = new();
+
+    private List<TableColumnConfig<CustomerOrderStatistics>> _columns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await OrderService.GetStatisticsAsync();
+
+        if (_stats != null)
+        {
+            _customerStats = _stats.OrdersByCustomer;
+
+            BuildColumns();
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new()
+            {
+                Label = "Cliente",
+                Accessor = "Name",
+                Type = ColumnType.Text
+            },
+
+            new()
+            {
+                Label = "Email",
+                Accessor = "Email",
+                Type = ColumnType.Text
+            },
+
+            new()
+            {
+                Label = "Pedidos",
+                Accessor = "TotalOrders",
+                Type = ColumnType.Text
+            },
+
+            new()
+            {
+                Label = "Total Gastado",
+                Accessor = "TotalSpent",
+                Type = ColumnType.Monetary
+            }
+        };
+    }
+
+    private string FormatCOP(decimal value) =>
+        value.ToString("C0", new System.Globalization.CultureInfo("es-CO"));
+}

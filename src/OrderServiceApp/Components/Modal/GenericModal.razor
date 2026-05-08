@@ -15,7 +15,7 @@
                 if (field.ShowOnlyWhenOperation && Operation != 1)
                     continue;
 
-                <div class="gm-field">
+                <div class="gm-field @(field.Type == FieldType.ProductList ? "gm-field--block" : "")">
                     @if (!string.IsNullOrEmpty(field.Icon))
                     {
                         <span class="gm-icon material-icons">@field.Icon</span>
@@ -47,6 +47,63 @@
                                 <option value="false">@field.FalseLabel</option>
                             </select>
                             break;
+
+                        case FieldType.Select:
+                            <select class="gm-input"
+                                    value="@GetValue(field.Id)"
+                                    @onchange="@(e => SetValue(field.Id, e.Value?.ToString() ?? ""))">
+                                <option value="">-- Selecciona --</option>
+                                @foreach (var opt in field.Options)
+                                {
+                                    <option value="@opt.Value">@opt.Label</option>
+                                }
+                            </select>
+                            break;
+
+                        case FieldType.ProductList:
+                            <div class="gm-product-list">
+                                <table class="gm-pl-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Cant.</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in _productItems)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <select class="gm-input"
+                                                            @bind="item.ProductId">
+                                                        <option value="0">-- Producto --</option>
+                                                        @foreach (var p in field.AvailableProducts)
+                                                        {
+                                                            <option value="@p.Id">@p.Name</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input class="gm-input"
+                                                           type="number"
+                                                           min="1"
+                                                           @bind="item.Quantity" />
+                                                </td>
+                                                <td>
+                                                    <button class="gm-pl-remove" @onclick="() => RemoveProductItem(item)">
+                                                        <span class="material-icons">delete</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                                <button class="gm-btn gm-btn--secondary gm-pl-add" @onclick="AddProductItem">
+                                    <span class="material-icons">add</span> Agregar producto
+                                </button>
+                            </div>
+                            break;
                     }
                 </div>
             }
@@ -73,16 +130,27 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<Dictionary<string, string>> OnSave { get; set; }
     [Parameter] public Dictionary<string, string> InitialValues { get; set; } = new();
-
     [Parameter] public bool IsOpen { get; set; }
 
     private Dictionary<string, string> _values = new();
+    private List<ProductItemRow> _productItems = new();
+
+    private class ProductItemRow
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; } = 1;
+    }
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
             _values = new Dictionary<string, string>(InitialValues);
+
+            _productItems = new()
+            {
+                new ProductItemRow()
+            };
         }
     }
 
@@ -105,13 +173,27 @@
     private void HandleBooleanChange(ChangeEventArgs e, string id) =>
         SetValue(id, e.Value?.ToString() ?? "false");
 
-    private async Task HandleSave() =>
-        await OnSave.InvokeAsync(new Dictionary<string, string>(_values));
+    private void AddProductItem() =>
+        _productItems.Add(new ProductItemRow());
 
-    private async Task Close()
+    private void RemoveProductItem(ProductItemRow item) =>
+        _productItems.Remove(item);
+
+    private async Task HandleSave()
     {
-        await OnClose.InvokeAsync();
+        var hasProductList = Fields.Any(f => f.Type == FieldType.ProductList);
+        if (hasProductList)
+        {
+            var productField = Fields.First(f => f.Type == FieldType.ProductList);
+            _values[productField.Id] = string.Join(",",
+                _productItems
+                    .Where(i => i.ProductId > 0 && i.Quantity > 0)
+                    .Select(i => $"{i.ProductId}:{i.Quantity}"));
+        }
+
+        await OnSave.InvokeAsync(new Dictionary<string, string>(_values));
     }
 
+    private async Task Close() => await OnClose.InvokeAsync();
     private async Task HandleOverlayClick() => await Close();
 }

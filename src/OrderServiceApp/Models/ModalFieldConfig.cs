@@ -5,7 +5,9 @@
         Text,
         Number,
         Boolean,
-        Hidden
+        Hidden,
+        Select,
+        ProductList
     }
 
     public class ModalFieldConfig
@@ -18,5 +20,9 @@
         public bool ToUpperCase { get; set; } = false;
         public string TrueLabel { get; set; } = "Sí";
         public string FalseLabel { get; set; } = "No";
+
+        public List<SelectOption> Options { get; set; } = new();
+
+        public List<ProductOption> AvailableProducts { get; set; } = new();
     }
 }

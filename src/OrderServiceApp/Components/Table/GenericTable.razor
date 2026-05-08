@@ -31,7 +31,9 @@
                                     }
                                 </div>
 
-                                @if (col.Type == ColumnType.Text || col.Type == ColumnType.Monetary)
+                                @if (col.Type == ColumnType.Text
+                               || col.Type == ColumnType.Monetary
+                               || col.Type == ColumnType.DateTime)
                                 {
                                     <input class="gt-filter-input"
                                            placeholder="Buscar..."
@@ -263,6 +265,12 @@
                 break;
             case ColumnType.Boolean:
                 builder.AddContent(0, val is bool b && b ? "Sí" : "No");
+                break;
+            case ColumnType.DateTime:
+                if (val is DateTime dt)
+                    builder.AddContent(0, dt.ToString("dd/MM/yyyy hh:mm tt"));
+                else
+                    builder.AddContent(0, "");
                 break;
             case ColumnType.Actions:
                 if (col.RenderActions != null)

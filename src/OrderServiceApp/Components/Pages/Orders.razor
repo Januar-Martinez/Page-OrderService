@@ -1,0 +1,211 @@
+﻿@page "/orders"
+@rendermode InteractiveServer
+@using OrderServiceApp.Models
+@using OrderServiceApp.Services
+@using OrderServiceApp.Components.Table
+@using OrderServiceApp.Components.Modal
+@inject OrderService OrderService
+@inject CustomerService CustomerService
+@inject ProductService ProductService
+
+<div class="emp-page">
+
+    <div class="emp-add-row">
+        <button class="gm-btn gm-btn--save" @onclick="OpenCreate">
+            <span class="material-icons">add_circle</span> Añadir
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_alertMessage))
+    {
+        <div class="emp-alert emp-alert--@_alertType">
+            @_alertMessage
+            <button class="emp-alert-close" @onclick="() => _alertMessage = null">✕</button>
+        </div>
+    }
+
+    <div class="emp-table-wrapper">
+        <GenericTable TItem="Order"
+                      Data="@_orders"
+                      Columns="@_columns"
+                      InitialPageSize="5" />
+    </div>
+
+</div>
+
+<GenericModal Title="@_modalTitle"
+              Operation="@_operation"
+              Fields="@_fields"
+              IsOpen="@_isOpen"
+              InitialValues="@_initialValues"
+              OnClose="CloseModal"
+              OnSave="HandleSave" />
+
+@code {
+    private List<Order> _orders = new();
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+
+    private string? _alertMessage;
+    private string _alertType = "success";
+
+    private bool _isOpen = false;
+    private string _modalTitle = "";
+    private int _operation = 1;
+    private Dictionary<string, string> _initialValues = new();
+
+    private List<TableColumnConfig<Order>> _columns = new();
+    private List<ModalFieldConfig> _fields = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        BuildColumns();
+        BuildFields();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _orders = await OrderService.GetAllAsync();
+            _customers = await CustomerService.GetAllAsync();
+            _products = await ProductService.GetAllAsync();
+        }
+        catch
+        {
+            ShowAlert("Error al cargar datos", "error");
+        }
+    }
+
+    private async Task LoadOrders()
+    {
+        try
+        {
+            _orders = await OrderService.GetAllAsync();
+        }
+        catch
+        {
+            ShowAlert("Error al cargar pedidos", "error");
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new List<TableColumnConfig<Order>>
+        {
+            new() { Label = "ID",       Accessor = "Id",            Type = ColumnType.Text },
+            new() { Label = "Cliente",  Accessor = "CustomerName",  Type = ColumnType.Text },
+            new() { Label = "Email",    Accessor = "CustomerEmail", Type = ColumnType.Text },
+            new() { Label = "Total",    Accessor = "Total",         Type = ColumnType.Monetary },
+            new() { Label = "Fecha",    Accessor = "CreatedAt",     Type = ColumnType.DateTime },
+        };
+    }
+
+    private void BuildFields()
+    {
+        _fields = new List<ModalFieldConfig>
+        {
+            new()
+            {
+                Id      = "customer_id",
+                Label   = "Cliente",
+                Icon    = "person",
+                Type    = FieldType.Select,
+                Options = _customers.Select(c => new SelectOption
+                {
+                    Value = c.Id.ToString(),
+                    Label = c.Name
+                }).ToList()
+            },
+            new()
+            {
+                Id                = "products",
+                Label             = "Productos",
+                Icon              = "inventory_2",
+                Type              = FieldType.ProductList,
+                AvailableProducts = _products.Select(p => new ProductOption
+                {
+                    Id    = p.Id,
+                    Name  = p.Name,
+                    Price = p.Price
+                }).ToList()
+            }
+        };
+    }
+
+    private void OpenCreate()
+    {
+        BuildFields();
+
+        _modalTitle = "Registrar Pedido";
+        _operation = 1;
+        _initialValues = new();
+        _isOpen = true;
+    }
+
+    private void CloseModal()
+    {
+        _isOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleSave(Dictionary<string, string> values)
+    {
+        if (!int.TryParse(values.GetValueOrDefault("customer_id", ""), out var customerId))
+        {
+            ShowAlert("Selecciona un cliente", "warning");
+            return;
+        }
+
+        var productsRaw = values.GetValueOrDefault("products", "");
+        if (string.IsNullOrWhiteSpace(productsRaw))
+        {
+            ShowAlert("Agrega al menos un producto", "warning");
+            return;
+        }
+
+        var items = productsRaw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p =>
+            {
+                var parts = p.Split(':');
+                return new OrderItemRequest
+                    {
+                        ProductId = int.Parse(parts[0]),
+                        Quantity = int.Parse(parts[1])
+                    };
+            }).ToList();
+
+        var response = await OrderService.CreateAsync(new OrderRequest
+            {
+                CustomerId = customerId,
+                Products = items
+            });
+
+        if (response.Success)
+        {
+            ShowAlert(response.Message, "success");
+            CloseModal();
+            await LoadOrders();
+        }
+        else
+        {
+            var type = response.StatusCode switch
+            {
+                400 => "warning",
+                404 => "warning",
+                409 => "warning",
+                500 => "error",
+                _ => "error"
+            };
+            ShowAlert(response.Message, type);
+        }
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        _alertMessage = message;
+        _alertType = type;
+    }
+}

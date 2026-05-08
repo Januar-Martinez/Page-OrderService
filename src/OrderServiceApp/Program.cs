@@ -16,6 +16,7 @@ builder.Services.AddScoped(sp =>
 
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();
 

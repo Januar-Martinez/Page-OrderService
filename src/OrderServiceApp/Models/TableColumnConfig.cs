@@ -7,6 +7,7 @@ namespace OrderServiceApp.Models
         Text,
         Monetary,
         Boolean,
+        DateTime,
         Actions
     }
     public class TableColumnConfig<TItem>

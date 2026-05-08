@@ -1,0 +1,273 @@
+﻿@page "/products"
+@rendermode InteractiveServer
+@using OrderServiceApp.Models
+@using OrderServiceApp.Services
+@using OrderServiceApp.Components.Table
+@using OrderServiceApp.Components.Modal
+@inject ProductService ProductService
+
+<div class="emp-page">
+
+    <div class="emp-add-row">
+        <button class="gm-btn gm-btn--save" @onclick="OpenCreate">
+            <span class="material-icons">add_circle</span> Añadir
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_alertMessage))
+    {
+        <div class="emp-alert emp-alert--@_alertType">
+            @_alertMessage
+            <button class="emp-alert-close" @onclick="() => _alertMessage = null">✕</button>
+        </div>
+    }
+
+    <div class="emp-table-wrapper">
+        <GenericTable TItem="Product"
+                      Data="@_products"
+                      Columns="@_columns"
+                      InitialPageSize="5" />
+    </div>
+
+    @if (_confirmDelete)
+    {
+        <div class="gm-overlay gm-overlay--visible">
+            <div class="gm-dialog">
+                <div class="gm-header">
+                    <span class="gm-title">Eliminar producto</span>
+                </div>
+                <div class="gm-body">
+                    <p>¿Seguro que deseas eliminar <strong>@_deleteTargetName</strong>?</p>
+                    <div class="gm-save-wrapper">
+                        <button class="gm-btn gm-btn--save" @onclick="ConfirmDelete">Eliminar</button>
+                    </div>
+                </div>
+                <div class="gm-footer">
+                    <button class="gm-btn gm-btn--secondary" @onclick="CancelDelete">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+<GenericModal Title="@_modalTitle"
+              Operation="@_operation"
+              Fields="@_fields"
+              IsOpen="@_isOpen"
+              InitialValues="@_initialValues"
+              OnClose="CloseModal"
+              OnSave="HandleSave" />
+
+@code {
+    private List<Product> _products = new();
+
+    private string? _alertMessage;
+    private string _alertType = "success";
+
+    private bool _isOpen = false;
+    private string _modalTitle = "";
+    private int _operation = 1;
+    private Dictionary<string, string> _initialValues = new();
+
+    private int _editTargetId;
+
+    private bool _confirmDelete = false;
+    private int _deleteTargetId;
+    private string _deleteTargetName = "";
+
+    private List<TableColumnConfig<Product>> _columns = new();
+
+    private readonly List<ModalFieldConfig> _fields = new()
+    {
+        new() { Id = "name",  Label = "Nombre", Icon = "inventory_2", Type = FieldType.Text, ToUpperCase = false },
+        new() { Id = "price", Label = "Precio",  Icon = "attach_money",  Type = FieldType.Number },
+        new() { Id = "stock", Label = "Stock",  Icon = "warehouse",  Type = FieldType.Number },
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        try
+        {
+            _products = await ProductService.GetAllAsync();
+        }
+        catch
+        {
+            ShowAlert("Error al cargar clientes", "error");
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new List<TableColumnConfig<Product>>
+        {
+            new() { Label = "ID",      Accessor = "Id",    Type = ColumnType.Text },
+            new() { Label = "Nombre",  Accessor = "Name",  Type = ColumnType.Text },
+            new() { Label = "Precio",  Accessor = "Price", Type = ColumnType.Monetary },
+            new() { Label = "Stock",   Accessor = "Stock", Type = ColumnType.Text },
+            new()
+            {
+                Label = "Acciones",
+                Accessor = "Id",
+                Type = ColumnType.Actions,
+                RenderActions = (pr) =>
+                @<div class="emp-actions">
+                    <button class="emp-btn-icon" title="Editar" @onclick="() => OpenEdit(pr)">
+                        <span class="material-icons">edit</span>
+                    </button>
+                    <button class="emp-btn-icon emp-btn-icon--danger" title="Eliminar"
+                            @onclick="() => AskDelete(pr.Id, pr.Name)">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+    }
+        };
+    }
+
+    private void OpenCreate()
+    {
+        _modalTitle = "Registrar Producto";
+        _operation = 1;
+        _initialValues = new();
+        _isOpen = true;
+    }
+
+    private void OpenEdit(Product pr)
+    {
+        _modalTitle = "Editar Producto";
+        _operation = 2;
+        _editTargetId = pr.Id;
+        _initialValues = new()
+            {
+                ["name"] = pr.Name,
+                ["price"] = pr.Price.ToString(),
+                ["stock"] = pr.Stock.ToString(),
+            };
+        _isOpen = true;
+    }
+
+    private void CloseModal() => _isOpen = false;
+
+    private async Task HandleSave(Dictionary<string, string> values)
+    {
+        var name = values.GetValueOrDefault("name", "").Trim();
+        var priceText = values.GetValueOrDefault("price", "").Trim();
+        var stockText = values.GetValueOrDefault("stock", "").Trim();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            ShowAlert("Escribe el nombre del Producto", "warning");
+            return;
+        }
+
+        if (!int.TryParse(priceText, out var price))
+        {
+            ShowAlert("Precio inválido", "warning");
+            return;
+        }
+
+        if (!int.TryParse(stockText, out var stock))
+        {
+            ShowAlert("Stock inválido", "warning");
+            return;
+        }
+
+        ApiResponse<Product> response;
+
+        if (_operation == 1)
+        {
+            response = await ProductService.CreateAsync(new Product
+            {
+                Name = name,
+                Price = price,
+                Stock = stock
+            });
+        }
+        else if (_operation == 2)
+        {
+            response = await ProductService.UpdateAsync(new Product
+            {
+                Id = _editTargetId,
+                Name = name,
+                Price = price,
+                Stock = stock
+            });
+        }
+        else
+        {
+            response = new ApiResponse<Product>
+            {
+                Success = false,
+                Message = "Operación no válida"
+            };
+        }
+
+        if (response.Success)
+        {
+            ShowAlert(response.Message, "success");
+            CloseModal();
+            await LoadProducts();
+        }
+        else
+        {
+            var type = response.StatusCode switch
+            {
+                400 => "warning",
+                404 => "warning",
+                409 => "warning",
+                500 => "error",
+                _ => "error"
+            };
+
+            ShowAlert(response.Message, type);
+        }
+    }
+
+    private void AskDelete(int id, string name)
+    {
+        _deleteTargetId = id;
+        _deleteTargetName = name;
+        _confirmDelete = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        _confirmDelete = false;
+
+        var response = await ProductService.DeleteAsync(_deleteTargetId);
+
+        var alertType = response.StatusCode switch
+        {
+            400 => "warning",
+            404 => "warning",
+            409 => "warning",
+            500 => "error",
+            _ => response.Success ? "success" : "error"
+        };
+
+        ShowAlert(response.Message, alertType);
+
+        if (response.Success)
+        {
+            await LoadProducts();
+        }
+    }
+
+    private void CancelDelete()
+    {
+        _confirmDelete = false;
+        ShowAlert("El producto NO fue eliminado", "info");
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        _alertMessage = message;
+        _alertType = type;
+    }
+}

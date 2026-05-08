@@ -55,17 +55,17 @@
 
     private readonly List<ModalFieldConfig> _fields = new()
     {
-        new() { Id = "name",  Label = "Nombre", Icon = "person", Type = FieldType.Text, ToUpperCase = true },
+        new() { Id = "name",  Label = "Nombre", Icon = "person", Type = FieldType.Text, ToUpperCase = false },
         new() { Id = "email", Label = "Email",  Icon = "email",  Type = FieldType.Text },
     };
 
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
-        await LoadEmployees();
+        await LoadCustomers();
     }
 
-    private async Task LoadEmployees()
+    private async Task LoadCustomers()
     {
         try
         {
@@ -137,7 +137,7 @@
         {
             ShowAlert(response.Message, "success");
             CloseModal();
-            await LoadEmployees();
+            await LoadCustomers();
         }
         else
         {

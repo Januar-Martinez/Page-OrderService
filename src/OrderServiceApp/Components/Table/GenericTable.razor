@@ -239,7 +239,15 @@
     private decimal GetDecimalValue(TItem item, string prop)
     {
         var v = GetPropertyValue(item, prop);
-        return v is decimal d ? d : (v is double db ? (decimal)db : 0m);
+        return v switch
+        {
+            decimal d => d,
+            double db => (decimal)db,
+            float f => (decimal)f,
+            int i => (decimal)i,
+            long l => (decimal)l,
+            _ => 0m
+        };
     }
 
     private string FormatCOP(decimal value) =>
